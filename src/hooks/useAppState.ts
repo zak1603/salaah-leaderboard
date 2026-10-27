@@ -1,13 +1,16 @@
 import * as React from "react"
 
 import { todayKey } from "@/lib/dates"
+import { qazaBalances } from "@/lib/qaza"
 import { initialState, loadState, saveState } from "@/lib/storage"
 import { watchTheme } from "@/lib/theme"
-import type { AppState, DayRecord, Fard, Salaah, Status } from "@/types"
+import { FARD, type AppState, type DayRecord, type Fard, type Salaah, type Status } from "@/types"
 
 type Actions = {
   setStatus: (date: string, salaah: Salaah, status: Status) => void
   setJamaah: (date: string, salaah: Fard, jamaah: boolean) => void
+  logQazaPrayed: (salaah: Fard) => void
+  addPastQaza: (counts: Partial<Record<Fard, number>>) => void
   setSettings: (settings: Partial<AppState["settings"]>) => void
   setName: (name: string) => void
   replaceState: (state: AppState) => void
@@ -71,6 +74,25 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
             }
           })
         ),
+
+      logQazaPrayed: (salaah) =>
+        setState((s) => {
+          if (qazaBalances(s)[salaah] <= 0) return s
+          const entry = { id: crypto.randomUUID(), salaah, change: -1, at: new Date().toISOString() }
+          return { ...s, qazaLog: [...s.qazaLog, entry] }
+        }),
+
+      addPastQaza: (counts) =>
+        setState((s) => {
+          const at = new Date().toISOString()
+          const entries = FARD.map((salaah) => ({
+            id: crypto.randomUUID(),
+            salaah,
+            change: Math.max(0, Math.floor(counts[salaah] ?? 0)),
+            at,
+          })).filter((e) => e.change > 0)
+          return entries.length ? { ...s, qazaLog: [...s.qazaLog, ...entries] } : s
+        }),
 
       setSettings: (settings) =>
         setState((s) => ({ ...s, settings: { ...s.settings, ...settings } })),
