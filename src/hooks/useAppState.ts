@@ -4,7 +4,15 @@ import { todayKey } from "@/lib/dates"
 import { qazaBalances } from "@/lib/qaza"
 import { initialState, loadState, saveState } from "@/lib/storage"
 import { watchTheme } from "@/lib/theme"
-import { FARD, type AppState, type DayRecord, type Fard, type Salaah, type Status } from "@/types"
+import {
+  FARD,
+  type AppState,
+  type DayRecord,
+  type Fard,
+  type LeaderboardUser,
+  type Salaah,
+  type Status,
+} from "@/types"
 
 type Actions = {
   setStatus: (date: string, salaah: Salaah, status: Status) => void
@@ -13,6 +21,8 @@ type Actions = {
   addPastQaza: (counts: Partial<Record<Fard, number>>) => void
   setSettings: (settings: Partial<AppState["settings"]>) => void
   setName: (name: string) => void
+  upsertLeaderboardUser: (user: Omit<LeaderboardUser, "id">) => void
+  removeLeaderboardUser: (id: string) => void
   replaceState: (state: AppState) => void
   reset: () => void
 }
@@ -98,6 +108,27 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         setState((s) => ({ ...s, settings: { ...s.settings, ...settings } })),
 
       setName: (name) => setState((s) => ({ ...s, currentUser: { name } })),
+
+      upsertLeaderboardUser: (user) =>
+        setState((s) => {
+          const existing = s.leaderboardUsers.find(
+            (u) => u.name.toLowerCase() === user.name.toLowerCase()
+          )
+          const id = existing?.id ?? crypto.randomUUID()
+          return {
+            ...s,
+            leaderboardUsers: [
+              ...s.leaderboardUsers.filter((u) => u.id !== id),
+              { ...existing, ...user, id },
+            ],
+          }
+        }),
+
+      removeLeaderboardUser: (id) =>
+        setState((s) => ({
+          ...s,
+          leaderboardUsers: s.leaderboardUsers.filter((u) => u.id !== id),
+        })),
 
       replaceState: (next) => setState(next),
 
